@@ -8,6 +8,7 @@ import UuidGenerator from './views/UuidGenerator.vue'
 import TextDiff from './views/TextDiff.vue'
 import BookmarkManager from './views/BookmarkManager.vue'
 import ImageOCR from './views/ImageOCR.vue'
+import Translator from './views/Translator.vue'
 
 const routes = [
   { path: '/', component: Home },
@@ -16,7 +17,8 @@ const routes = [
   { path: '/uuid', component: UuidGenerator },
   { path: '/text-diff', component: TextDiff },
   { path: '/bookmarks', component: BookmarkManager },
-  { path: '/ocr', component: ImageOCR }
+  { path: '/ocr', component: ImageOCR },
+  { path: '/translator', component: Translator }
 ]
 
 const router = createRouter({

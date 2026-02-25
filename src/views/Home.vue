@@ -41,6 +41,12 @@
         <h3>图片识字</h3>
         <p>上传图片，自动提取图片中的文字内容</p>
       </router-link>
+
+      <router-link to="/translator" class="tool-card">
+        <div class="tool-icon">🌐</div>
+        <h3>翻译工具</h3>
+        <p>中译英、英译中文互译</p>
+      </router-link>
     </div>
   </div>
 </template>
