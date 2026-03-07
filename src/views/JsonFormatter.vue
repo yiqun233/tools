@@ -25,9 +25,7 @@
       <div class="output-section">
         <div class="section-header">
           <h3>输出结果</h3>
-          <button @click="copyOutput" class="btn btn-success">
-            {{ copyLabel }}
-          </button>
+          <button @click="copyOutput" class="btn btn-success">{{ copyLabel }}</button>
         </div>
         <textarea
           v-model="outputText"
@@ -37,7 +35,7 @@
         ></textarea>
       </div>
 
-      <div v-if="error" class="error-message">
+      <div v-if="error" class="error-message" style="grid-column: 1 / -1">
         {{ error }}
       </div>
     </div>
@@ -98,10 +96,11 @@ const copyOutput = async () => {
 .tool-content {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 2rem;
+  gap: 1.5rem;
 }
 
-.input-section, .output-section {
+.input-section,
+.output-section {
   display: flex;
   flex-direction: column;
 }
@@ -109,6 +108,7 @@ const copyOutput = async () => {
 @media (max-width: 768px) {
   .tool-content {
     grid-template-columns: 1fr;
+    gap: 1rem;
   }
 }
 </style>

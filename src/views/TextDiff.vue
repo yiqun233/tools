@@ -574,9 +574,12 @@ const applyToRight = () => {
   .input-section,
   .chunk-content { grid-template-columns: 1fr; }
   .chunk-side:first-child { border-right: none; border-bottom: 1px solid #e0e0e0; }
-  .button-bar { flex-direction: column; }
-  .compare-options { flex-direction: column; gap: 0.5rem; }
-  .stats { flex-direction: column; gap: 1rem; }
-  .chunk-controls { flex-wrap: wrap; }
+  .button-bar { flex-direction: column; gap: 1rem; }
+  .compare-options { flex-direction: row; gap: 1rem; flex-wrap: wrap; }
+  .stats { flex-direction: column; gap: 0.75rem; align-items: center; }
+  .chunk-controls { flex-wrap: wrap; justify-content: center; }
+  /* 结果头部在移动端纵向排列 */
+  .result-header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+  .legend { flex-wrap: wrap; gap: 0.75rem; }
 }
 </style>

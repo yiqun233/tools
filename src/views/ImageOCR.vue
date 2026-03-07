@@ -401,5 +401,11 @@ onUnmounted(async () => {
 @media (max-width: 768px) {
   .result-section { grid-template-columns: 1fr; }
   .options-bar { flex-direction: column; align-items: stretch; }
+  /* 上传区域在移动端更紧凑 */
+  .upload-area { padding: 1.75rem 1rem; }
+  .upload-icon { font-size: 2.8rem; }
+  .upload-text { font-size: 1rem; }
+  .upload-hint { font-size: 0.8rem; }
+  .language-select { font-size: 16px; }
 }
 </style>

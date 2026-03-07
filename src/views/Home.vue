@@ -45,8 +45,7 @@
   </div>
 </template>
 
-<script setup>
-</script>
+<script setup></script>
 
 <style scoped>
 .home {
@@ -56,56 +55,85 @@
 
 .welcome-section {
   text-align: center;
-  margin-bottom: 3rem;
+  margin-bottom: 2rem;
+  padding: 0 1rem;
 }
 
 .welcome-section h2 {
-  font-size: 2.5rem;
-  margin-bottom: 1rem;
+  font-size: 2.2rem;
+  margin-bottom: 0.75rem;
   color: #667eea;
 }
 
 .welcome-section p {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   color: #666;
 }
 
 .tools-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2rem;
-  padding: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
 }
 
 .tool-card {
   background: white;
   border-radius: 12px;
-  padding: 2rem;
+  padding: 1.75rem 1.5rem;
   text-decoration: none;
   color: inherit;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
   transition: all 0.3s;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .tool-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.2);
 }
 
 .tool-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+  line-height: 1;
 }
 
 .tool-card h3 {
-  font-size: 1.5rem;
-  margin-bottom: 0.5rem;
+  font-size: 1.25rem;
+  margin-bottom: 0.4rem;
   color: #333;
 }
 
 .tool-card p {
   color: #666;
-  line-height: 1.6;
+  line-height: 1.5;
+  font-size: 0.9rem;
+}
+
+/* 移动端 */
+@media (max-width: 600px) {
+  .welcome-section h2 { font-size: 1.6rem; }
+  .welcome-section p  { font-size: 1rem; }
+
+  .tools-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .tool-card {
+    padding: 1.25rem 0.75rem;
+  }
+
+  .tool-icon { font-size: 2rem; }
+  .tool-card h3 { font-size: 1rem; }
+  .tool-card p { font-size: 0.8rem; display: none; } /* 手机上隐藏描述节省空间 */
+}
+
+@media (max-width: 360px) {
+  .tools-grid { grid-template-columns: 1fr; }
+  .tool-card p { display: block; }
 }
 </style>

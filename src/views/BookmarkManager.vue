@@ -17,16 +17,46 @@
           />
         </div>
         <div class="toolbar-actions">
-          <button @click="showAddBookmarkModal" class="btn btn-primary">+ 添加书签</button>
-          <button @click="showAddFolderModal" class="btn btn-secondary">+ 新建文件夹</button>
-          <button @click="exportBookmarks" class="btn btn-success">导出书签</button>
-          <button @click="importBookmarks" class="btn btn-info">导入书签</button>
+          <button @click="showAddBookmarkModal" class="btn btn-primary">+ 添加</button>
+          <button @click="showAddFolderModal" class="btn btn-secondary">+ 文件夹</button>
+          <button @click="exportBookmarks" class="btn btn-success">导出</button>
+          <button @click="importBookmarks" class="btn btn-info">导入</button>
+        </div>
+      </div>
+
+      <!-- 移动端文件夹折叠栏 -->
+      <div class="mobile-folder-bar">
+        <button class="folder-toggle" @click="sidebarOpen = !sidebarOpen">
+          <span class="folder-icon">📁</span>
+          {{ currentFolderName }}
+          <span class="folder-count">({{ filteredBookmarks.length }})</span>
+          <span class="toggle-arrow" :class="{ open: sidebarOpen }">▾</span>
+        </button>
+        <div v-if="sidebarOpen" class="folder-dropdown">
+          <div
+            :class="['folder-item', { active: currentFolder === null }]"
+            @click="selectFolder(null); sidebarOpen = false"
+          >
+            <span class="folder-icon">📚</span>
+            <span class="folder-name">所有书签</span>
+            <span class="folder-count">({{ totalBookmarks }})</span>
+          </div>
+          <div
+            v-for="folder in folders"
+            :key="folder.id"
+            :class="['folder-item', { active: currentFolder === folder.id }]"
+            @click="selectFolder(folder.id); sidebarOpen = false"
+          >
+            <span class="folder-icon">📁</span>
+            <span class="folder-name">{{ folder.name }}</span>
+            <span class="folder-count">({{ getBookmarkCountInFolder(folder.id) }})</span>
+          </div>
         </div>
       </div>
 
       <!-- 主内容区 -->
       <div class="main-content">
-        <!-- 文件夹树 -->
+        <!-- 文件夹树（桌面端） -->
         <div class="sidebar">
           <div class="sidebar-header"><h3>文件夹</h3></div>
           <div class="folder-tree">
@@ -171,6 +201,7 @@ const bookmarks = ref([])
 const folders = ref([])
 const searchQuery = ref('')
 const currentFolder = ref(null)
+const sidebarOpen = ref(false)
 
 const showBookmarkModal = ref(false)
 const showFolderModal = ref(false)
@@ -555,8 +586,81 @@ onMounted(() => { loadFromLocalStorage() })
 
 @media (max-width: 768px) {
   .main-content { grid-template-columns: 1fr; }
-  .sidebar { border-right: none; border-bottom: 2px solid #e0e0e0; padding-right: 0; padding-bottom: 1.5rem; }
+  /* 桌面侧边栏在移动端隐藏 */
+  .sidebar {
+    display: none;
+  }
   .toolbar { flex-direction: column; align-items: stretch; }
-  .toolbar-actions { flex-direction: column; }
+  .toolbar-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+  .toolbar-actions .btn {
+    text-align: center;
+  }
+  .search-input { font-size: 16px; }
+  .bookmark-card { flex-wrap: wrap; }
+  .bookmark-favicon { display: none; }
+  .bookmark-meta { flex-direction: column; gap: 0.25rem; }
+}
+
+/* 移动端文件夹折叠栏 */
+.mobile-folder-bar {
+  display: none;
+  position: relative;
+  z-index: 10;
+}
+
+.folder-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #f8f9fa;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #333;
+  text-align: left;
+  touch-action: manipulation;
+}
+
+.folder-toggle .folder-count { color: #999; font-size: 0.85rem; }
+
+.toggle-arrow {
+  margin-left: auto;
+  display: inline-block;
+  transition: transform 0.2s;
+  font-size: 1.1rem;
+  color: #999;
+}
+.toggle-arrow.open { transform: rotate(180deg); }
+
+.folder-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+  z-index: 50;
+  overflow: hidden;
+}
+
+.folder-dropdown .folder-item {
+  border-radius: 0;
+  border-bottom: 1px solid #f0f0f0;
+  padding: 0.85rem 1rem;
+}
+.folder-dropdown .folder-item:last-child { border-bottom: none; }
+
+@media (max-width: 768px) {
+  .mobile-folder-bar { display: block; }
 }
 </style>
