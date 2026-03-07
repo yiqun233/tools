@@ -53,6 +53,9 @@ Windows 风格（^ 续行）也支持"
           @keydown.enter="sendRequest"
           spellcheck="false"
         />
+        <div class="proxy-indicator" :class="{ active: useProxy }" @click="reqTab='settings'" title="点击切到设置调整代理">
+          {{ useProxy ? '🔀 代理' : '🌐 直连' }}
+        </div>
         <button
           @click="sendRequest"
           :disabled="loading"
@@ -204,7 +207,7 @@ Windows 风格（^ 续行）也支持"
           <div v-show="reqTab === 'settings'">
             <div class="field-row">
               <label class="field-label">超时时间</label>
-              <input v-model.number="timeout" type="number" class="field-input" style="width:100px" min="1" max="60" /> 秒
+              <input v-model.number="timeout" type="number" class="field-input" style="width:100px" min="1" max="120" /> 秒
             </div>
             <div class="field-row">
               <label class="field-label">跟随重定向</label>
@@ -213,6 +216,18 @@ Windows 风格（^ 续行）也支持"
             <div class="field-row">
               <label class="field-label">发送 Cookie</label>
               <input type="checkbox" v-model="sendCookies" />
+            </div>
+            <div class="setting-divider"></div>
+            <div class="field-row proxy-row">
+              <label class="field-label">服务端代理</label>
+              <label class="proxy-toggle">
+                <input type="checkbox" v-model="useProxy" />
+                <span class="proxy-slider"></span>
+              </label>
+              <span class="proxy-desc">{{ useProxy ? '✅ 已启用 — 请求由服务器转发，可绕过 CORS' : '请求直接从浏览器发出' }}</span>
+            </div>
+            <div v-if="isLocalUrl" class="local-warning">
+              ⚠️ 检测到本地地址（127.0.0.1 / localhost）。服务端代理无法访问你本机的服务，请关闭代理或直接在本地环境测试。
             </div>
           </div>
 
@@ -236,16 +251,26 @@ Windows 风格（^ 续行）也支持"
       <!-- 错误 -->
       <div v-if="reqError" class="req-error">
         <div class="req-error-icon">❌</div>
-        <div>
+        <div class="req-error-body">
           <strong>请求失败</strong>
           <p class="req-error-msg">{{ reqError }}</p>
           <div v-if="isCorsError" class="cors-help">
-            <strong>💡 疑似 CORS 问题，解决方案：</strong>
-            <ol>
-              <li>在目标服务器添加响应头：<code>Access-Control-Allow-Origin: *</code></li>
-              <li>使用 CORS 代理，例如 URL 前加：<code>https://corsproxy.io/?</code></li>
-              <li>在同域的后端服务中转发请求</li>
-            </ol>
+            <strong>💡 疑似 CORS / 混合内容问题</strong>
+            <div class="cors-solutions">
+              <div class="cors-sol proxy-sol" v-if="!useProxy">
+                <strong>✅ 推荐：启用服务端代理</strong>
+                <p>由服务器转发请求，彻底绕过浏览器 CORS 限制</p>
+                <button class="btn btn-primary btn-small" @click="retryWithProxy">🔀 启用代理并重试</button>
+              </div>
+              <div class="cors-sol">
+                <strong>🔧 其他方案</strong>
+                <ol>
+                  <li>在目标服务器添加响应头：<code>Access-Control-Allow-Origin: *</code></li>
+                  <li>URL 前加 CORS 代理：<code>https://corsproxy.io/?</code></li>
+                  <li v-if="isLocalUrl">⚠️ 本地地址（127.0.0.1）无法通过服务端代理访问，请在目标服务添加 CORS 头</li>
+                </ol>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -573,9 +598,15 @@ const digestUser  = ref('')
 const digestPass  = ref('')
 
 // Settings
-const timeout       = ref(30)
+const timeout        = ref(30)
 const followRedirect = ref(true)
-const sendCookies   = ref(false)
+const sendCookies    = ref(false)
+const useProxy       = ref(true) // 默认启用代理
+
+const isLocalUrl = computed(() => {
+  const u = url.value.toLowerCase()
+  return u.includes('127.0.0.1') || u.includes('localhost') || u.includes('::1')
+})
 
 // ─── 响应状态 ────────────────────────────────────────────
 const loading     = ref(false)
@@ -711,89 +742,137 @@ const sendRequest = async () => {
   const finalUrl = buildUrl()
   const headers  = buildHeaders()
   const { body, contentType, bodyStr } = buildBody()
-
   if (contentType) headers['Content-Type'] = contentType
-
-  const fetchOpts = {
-    method:      method.value,
-    headers,
-    credentials: sendCookies.value ? 'include' : 'same-origin',
-    redirect:    followRedirect.value ? 'follow' : 'manual',
-  }
-  if (body !== null) fetchOpts.body = body
-
-  const controller = new AbortController()
-  fetchOpts.signal = controller.signal
-  const timer = setTimeout(() => controller.abort(), timeout.value * 1000)
 
   const t0 = Date.now()
 
   try {
-    const res = await fetch(finalUrl, fetchOpts)
-    clearTimeout(timer)
-    const time = Date.now() - t0
+    let resData
 
-    // Collect response headers
-    const resHeaders = {}
-    res.headers.forEach((v, k) => { resHeaders[k] = v })
-    const ct = resHeaders['content-type'] || ''
+    if (useProxy.value) {
+      // ── 代理模式：通过服务端转发 ──
+      const proxyRes = await fetch('/api/proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url:     finalUrl,
+          method:  method.value,
+          headers: headers,
+          body:    body ?? undefined,
+        }),
+        signal: AbortSignal.timeout(timeout.value * 1000 + 5000), // 代理额外+5s
+      })
 
-    let formattedBody = '', isImage = false, imageUrl = '', rawText = ''
+      const proxyData = await proxyRes.json()
 
-    if (ct.includes('image/')) {
-      isImage = true
-      const blob = await res.blob()
-      imageUrl = URL.createObjectURL(blob)
-      rawText = `[Image ${ct} — ${fmtSize(blob.size)}]`
-      formattedBody = rawText
+      if (proxyData.proxyError) {
+        reqError.value = `代理转发失败：${proxyData.error}`
+        isCorsError.value = false
+        responded.value = true
+        return
+      }
+
+      resData = proxyData
+      // 解码 base64 图片
+      if (proxyData.isBase64) {
+        const ct = proxyData.headers['content-type'] || 'image/png'
+        resData.imageUrl = `data:${ct};base64,${proxyData.body}`
+        resData.isImage = true
+      }
     } else {
-      rawText = await res.text()
-      if (ct.includes('application/json') || ct.includes('text/json')) {
-        try { formattedBody = JSON.stringify(JSON.parse(rawText), null, 2) }
-        catch { formattedBody = rawText }
-      } else if (ct.includes('text/html')) {
-        formattedBody = rawText // show raw HTML
-      } else {
+      // ── 直连模式：浏览器直接发请求 ──
+      const fetchOpts = {
+        method:      method.value,
+        headers,
+        credentials: sendCookies.value ? 'include' : 'same-origin',
+        redirect:    followRedirect.value ? 'follow' : 'manual',
+        signal:      AbortSignal.timeout(timeout.value * 1000),
+      }
+      if (body !== null) fetchOpts.body = body
+
+      const res = await fetch(finalUrl, fetchOpts)
+      const time = Date.now() - t0
+
+      const resHeaders = {}
+      res.headers.forEach((v, k) => { resHeaders[k] = v })
+      const ct = resHeaders['content-type'] || ''
+
+      let formattedBody = '', isImage = false, imageUrl = '', rawText = ''
+
+      if (ct.includes('image/')) {
+        isImage = true
+        const blob = await res.blob()
+        imageUrl = URL.createObjectURL(blob)
+        rawText = `[Image ${ct} — ${fmtSize(blob.size)}]`
         formattedBody = rawText
+      } else {
+        rawText = await res.text()
+        if (ct.includes('application/json') || ct.includes('text/json')) {
+          try { formattedBody = JSON.stringify(JSON.parse(rawText), null, 2) }
+          catch { formattedBody = rawText }
+        } else {
+          formattedBody = rawText
+        }
+      }
+
+      resData = {
+        status: res.status, statusText: res.statusText,
+        headers: resHeaders, contentType: ct,
+        body: rawText, formattedBody, isImage, imageUrl,
+        time, sizeText: fmtSize(new Blob([rawText]).size),
+        finalUrl, sentHeaders: headers, sentBody: bodyStr,
       }
     }
 
-    const sizeText = fmtSize(new Blob([rawText]).size)
-
-    responseData.value = {
-      status:       res.status,
-      statusText:   res.statusText,
-      headers:      resHeaders,
-      contentType:  ct,
-      body:         rawText,
-      formattedBody,
-      isImage,
-      imageUrl,
-      time,
-      sizeText,
-      finalUrl,
-      sentHeaders:  headers,
-      sentBody:     bodyStr,
+    // 统一处理代理返回的数据
+    if (!resData.formattedBody) {
+      const ct = resData.headers?.['content-type'] || ''
+      resData.contentType = ct
+      if (!resData.isImage) {
+        const raw = resData.body || ''
+        if (ct.includes('application/json') || ct.includes('text/json')) {
+          try { resData.formattedBody = JSON.stringify(JSON.parse(raw), null, 2) }
+          catch { resData.formattedBody = raw }
+        } else {
+          resData.formattedBody = raw
+        }
+      }
+      resData.time     = resData.time ?? (Date.now() - t0)
+      resData.sizeText = fmtSize(new Blob([resData.body ?? '']).size)
+      resData.finalUrl     = finalUrl
+      resData.sentHeaders  = headers
+      resData.sentBody     = bodyStr
     }
 
-    responded.value = true
-    resTab.value = 'body'
+    responseData.value = resData
+    responded.value    = true
+    resTab.value       = 'body'
 
-    // Save to history
-    const entry = { method: method.value, url: url.value, status: res.status, at: new Date().toLocaleTimeString('zh-CN') }
+    // 保存历史
+    const entry = { method: method.value, url: url.value, status: resData.status, at: new Date().toLocaleTimeString('zh-CN') }
     history.value = [entry, ...history.value.filter((_, i) => i < 19)]
     localStorage.setItem('httpclient_history', JSON.stringify(history.value))
 
   } catch (e) {
-    clearTimeout(timer)
-    reqError.value = e.name === 'AbortError'
+    reqError.value    = e.name === 'TimeoutError' || e.name === 'AbortError'
       ? `请求超时（超过 ${timeout.value} 秒）`
       : e.message
-    isCorsError.value = e.message.toLowerCase().includes('fetch') || e.message.toLowerCase().includes('cors')
+    isCorsError.value = !useProxy.value && (
+      e.message.toLowerCase().includes('fetch') ||
+      e.message.toLowerCase().includes('cors') ||
+      e.message.toLowerCase().includes('network') ||
+      e.message === 'Failed to fetch' ||
+      e.message === 'Load failed'
+    )
     responded.value = true
   } finally {
     loading.value = false
   }
+}
+
+const retryWithProxy = () => {
+  useProxy.value = true
+  sendRequest()
 }
 
 // ─── 复制响应 ────────────────────────────────────────────
@@ -926,6 +1005,81 @@ const clearHistory = () => {
   border-radius: 4px;
   border: 1px solid #bbf7d0;
 }
+
+/* ── 代理指示 ── */
+.proxy-indicator {
+  padding: 0 0.75rem;
+  font-size: 12px;
+  color: #999;
+  cursor: pointer;
+  white-space: nowrap;
+  border-left: 1.5px solid #e8e8e8;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s;
+}
+.proxy-indicator:hover { background: #f8f9fa; }
+.proxy-indicator.active { color: #16a34a; background: #f0fdf4; }
+
+/* 代理切换开关 */
+.proxy-row { align-items: center; gap: 1rem; }
+.proxy-toggle {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+}
+.proxy-toggle input { opacity: 0; width: 0; height: 0; }
+.proxy-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #ccc;
+  border-radius: 22px;
+  transition: 0.3s;
+}
+.proxy-slider::before {
+  position: absolute;
+  content: '';
+  height: 16px; width: 16px;
+  left: 3px; bottom: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+.proxy-toggle input:checked + .proxy-slider { background: #667eea; }
+.proxy-toggle input:checked + .proxy-slider::before { transform: translateX(18px); }
+.proxy-desc { font-size: 13px; color: #666; }
+
+.setting-divider { height: 1px; background: #f0f0f0; margin: 1rem 0; }
+
+.local-warning {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #fffbeb;
+  border: 1px solid #f59e0b;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #92400e;
+}
+
+/* 错误面板 */
+.req-error-body { flex: 1; }
+
+.cors-solutions { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.75rem; }
+.cors-sol {
+  padding: 0.85rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  font-size: 13px;
+}
+.proxy-sol { border-color: #a7f3d0; background: #f0fdf4; }
+.proxy-sol strong { color: #065f46; }
+.proxy-sol p { color: #047857; margin: 0.35rem 0 0.6rem; }
+.cors-sol ol { margin: 0.5rem 0 0 1.25rem; line-height: 1.9; }
+.cors-sol code { background: #f3f4f6; padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 12px; font-family: monospace; }
 
 /* ── URL 栏 ── */
 .url-bar {
