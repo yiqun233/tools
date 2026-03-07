@@ -14,6 +14,33 @@
     <!-- ===== 请求面板 ===== -->
     <div class="panel request-panel">
 
+      <!-- cURL 导入栏 -->
+      <div class="curl-bar">
+        <button class="curl-toggle-btn" @click="showCurlPanel = !showCurlPanel">
+          <span>⌨</span> 导入 cURL
+          <span class="curl-arrow" :class="{ open: showCurlPanel }">▾</span>
+        </button>
+        <span class="curl-hint">粘贴 curl 命令，自动解析为表单字段</span>
+      </div>
+
+      <div v-if="showCurlPanel" class="curl-panel">
+        <textarea
+          v-model="curlInput"
+          class="curl-textarea"
+          placeholder="curl -X POST http://127.0.0.1:3100/api \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &quot;{\&quot;key\&quot;:\&quot;value\&quot;}&quot;
+
+Windows 风格（^ 续行）也支持"
+          spellcheck="false"
+        ></textarea>
+        <div class="curl-actions">
+          <button class="btn btn-primary" @click="importCurl">🔄 解析并导入</button>
+          <button class="btn btn-danger btn-small" @click="curlInput = ''" style="margin-left:0.5rem">清空</button>
+          <span v-if="curlImportInfo" class="curl-info">{{ curlImportInfo }}</span>
+        </div>
+      </div>
+
       <!-- URL 栏 -->
       <div class="url-bar">
         <select v-model="method" :class="['method-select', `m-${method}`]">
@@ -348,6 +375,177 @@ const PRESET_HEADERS = [
   { k: 'Cache-Control', v: 'no-cache' },
 ]
 
+// ─── cURL 导入 ───────────────────────────────────────────
+const showCurlPanel  = ref(false)
+const curlInput      = ref('')
+const curlImportInfo = ref('')
+
+/** 将 curl 命令字符串 tokenize，正确处理单引号/双引号/转义 */
+const tokenizeCurl = (str) => {
+  const tokens = []
+  let i = 0
+  while (i < str.length) {
+    while (i < str.length && /\s/.test(str[i])) i++
+    if (i >= str.length) break
+    let tok = ''
+    if (str[i] === '"') {
+      i++
+      while (i < str.length && str[i] !== '"') {
+        if (str[i] === '\\' && i + 1 < str.length) {
+          const c = str[++i]
+          if      (c === '"')  tok += '"'
+          else if (c === '\\') tok += '\\'
+          else if (c === 'n')  tok += '\n'
+          else if (c === 't')  tok += '\t'
+          else if (c === 'r')  tok += '\r'
+          else                 tok += c
+        } else { tok += str[i] }
+        i++
+      }
+      i++ // closing "
+    } else if (str[i] === "'") {
+      i++
+      while (i < str.length && str[i] !== "'") tok += str[i++]
+      i++ // closing '
+    } else {
+      while (i < str.length && !/\s/.test(str[i])) tok += str[i++]
+    }
+    if (tok) tokens.push(tok)
+  }
+  return tokens
+}
+
+const parseCurlCommand = (raw) => {
+  // 1. 统一换行：处理 Windows（^）和 Unix（\）续行符
+  const str = raw
+    .replace(/\\\r?\n\s*/g, ' ')
+    .replace(/\^\r?\n\s*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^curl\s+/i, '')
+
+  const tokens = tokenizeCurl(str)
+  const res = { method: null, url: '', headers: [], body: null, bodyType: 'none', auth: null, formParams: [], multipartParams: [] }
+
+  let i = 0
+  const next = () => tokens[++i] ?? ''
+
+  while (i < tokens.length) {
+    const t = tokens[i]
+
+    if (t === '-X' || t === '--request') {
+      res.method = next().toUpperCase()
+    } else if (t.match(/^--request=(.+)/)) {
+      res.method = t.split('=')[1].toUpperCase()
+    } else if (t === '-H' || t === '--header') {
+      const h = next(); const ci = h.indexOf(':')
+      if (ci > -1) res.headers.push({ key: h.slice(0, ci).trim(), value: h.slice(ci + 1).trim(), enabled: true })
+    } else if (t.match(/^--header=(.+)/)) {
+      const h = t.slice('--header='.length); const ci = h.indexOf(':')
+      if (ci > -1) res.headers.push({ key: h.slice(0, ci).trim(), value: h.slice(ci + 1).trim(), enabled: true })
+    } else if (['-d', '--data', '--data-raw', '--data-ascii', '--data-binary'].includes(t)) {
+      const b = next()
+      res.body = b.startsWith('@') ? `[file: ${b.slice(1)}]` : b
+    } else if (t.match(/^--data=/)) {
+      res.body = t.slice('--data='.length)
+    } else if (t === '--json') {
+      res.body = next()
+      res.headers.push({ key: 'Content-Type', value: 'application/json', enabled: true })
+      res.headers.push({ key: 'Accept',       value: 'application/json', enabled: true })
+    } else if (t === '-F' || t === '--form') {
+      const pair = next(); const ei = pair.indexOf('=')
+      if (ei > -1) res.multipartParams.push({ key: pair.slice(0, ei), value: pair.slice(ei + 1), enabled: true })
+    } else if (t === '--data-urlencode') {
+      const pair = next(); const ei = pair.indexOf('=')
+      if (ei > -1) res.formParams.push({ key: pair.slice(0, ei), value: pair.slice(ei + 1), enabled: true })
+    } else if (t === '-u' || t === '--user') {
+      const up = next(); const ci = up.indexOf(':')
+      res.auth = { type: 'basic', user: ci > -1 ? up.slice(0, ci) : up, pass: ci > -1 ? up.slice(ci + 1) : '' }
+    } else if (t === '-G' || t === '--get') {
+      res.method = 'GET'
+    } else if (!t.startsWith('-') && !res.url && (t.startsWith('http') || t.startsWith('/'))) {
+      res.url = t
+    } else if (!t.startsWith('-') && !res.url && tokens[i - 1] === undefined) {
+      res.url = t
+    }
+    i++
+  }
+
+  // URL 可能是任意位置第一个非 flag 的 token
+  if (!res.url) {
+    const urlToken = tokens.find(t => !t.startsWith('-') && (t.startsWith('http') || t.startsWith('/')))
+    if (urlToken) res.url = urlToken
+  }
+
+  // 推断 bodyType
+  if (res.multipartParams.length) {
+    res.bodyType = 'multipart'
+  } else if (res.formParams.length) {
+    res.bodyType = 'form'
+  } else if (res.body) {
+    const ct = (res.headers.find(h => h.key.toLowerCase() === 'content-type')?.value || '').toLowerCase()
+    if (ct.includes('application/json')) {
+      res.bodyType = 'json'
+      try { res.body = JSON.stringify(JSON.parse(res.body), null, 2) } catch {}
+    } else if (ct.includes('application/x-www-form-urlencoded')) {
+      res.bodyType = 'form'
+      try {
+        const sp = new URLSearchParams(res.body)
+        for (const [k, v] of sp.entries()) res.formParams.push({ key: k, value: v, enabled: true })
+        res.body = null
+      } catch {}
+    } else if (ct.includes('xml')) {
+      res.bodyType = 'xml'
+    } else {
+      // 自动检测 JSON
+      try { JSON.parse(res.body); res.bodyType = 'json'; res.body = JSON.stringify(JSON.parse(res.body), null, 2) }
+      catch { res.bodyType = 'text' }
+    }
+  }
+
+  if (!res.method) res.method = res.body || res.formParams.length || res.multipartParams.length ? 'POST' : 'GET'
+  return res
+}
+
+const importCurl = () => {
+  if (!curlInput.value.trim()) { warning('请粘贴 cURL 命令'); return }
+  try {
+    const p = parseCurlCommand(curlInput.value)
+    method.value  = p.method
+    url.value     = p.url
+
+    if (p.headers.length)        reqHeaders.value = p.headers
+    if (p.formParams.length)     formParams.value = p.formParams
+    if (p.multipartParams.length) multipartParams.value = p.multipartParams
+
+    bodyType.value = p.bodyType
+    if (p.bodyType === 'json') jsonBody.value = p.body || ''
+    if (p.bodyType === 'text') textBody.value = p.body || ''
+    if (p.bodyType === 'xml')  xmlBody.value  = p.body || ''
+
+    if (p.auth?.type === 'basic') {
+      authType.value  = 'basic'
+      basicUser.value = p.auth.user
+      basicPass.value = p.auth.pass
+    }
+
+    // 自动切换到合适的 tab
+    reqTab.value = p.bodyType !== 'none' ? 'body'
+                 : p.headers.length      ? 'headers'
+                 : 'params'
+
+    const parts = [`方法: ${p.method}`, `URL: ${p.url}`]
+    if (p.headers.length)     parts.push(`${p.headers.length} 个 Header`)
+    if (p.bodyType !== 'none') parts.push(`Body: ${p.bodyType.toUpperCase()}`)
+    curlImportInfo.value = '✅ ' + parts.join(' · ')
+
+    showCurlPanel.value = false
+    success('cURL 导入成功！')
+  } catch (e) {
+    toastError('解析失败：' + e.message)
+  }
+}
+
 // ─── 请求状态 ────────────────────────────────────────────
 const method      = ref('GET')
 const url         = ref('')
@@ -649,6 +847,85 @@ const clearHistory = () => {
 }
 
 .request-panel, .response-panel { }
+
+/* ── cURL 导入 ── */
+.curl-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: #f0f4ff;
+  border-bottom: 1.5px solid #dce3ff;
+}
+
+.curl-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.85rem;
+  border: 1.5px solid #667eea;
+  background: white;
+  color: #667eea;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.2s;
+  touch-action: manipulation;
+}
+.curl-toggle-btn:hover { background: #667eea; color: white; }
+
+.curl-arrow {
+  display: inline-block;
+  transition: transform 0.2s;
+  font-size: 11px;
+}
+.curl-arrow.open { transform: rotate(180deg); }
+
+.curl-hint { font-size: 12px; color: #8899cc; }
+
+.curl-panel {
+  padding: 1rem;
+  background: #fafbff;
+  border-bottom: 1.5px solid #e0e6ff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.curl-textarea {
+  width: 100%;
+  min-height: 130px;
+  padding: 0.85rem;
+  border: 1.5px solid #d0d8ff;
+  border-radius: 8px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+  background: #1e1e2e;
+  color: #cdd6f4;
+  resize: vertical;
+  line-height: 1.6;
+  box-sizing: border-box;
+}
+.curl-textarea:focus { outline: none; border-color: #667eea; }
+.curl-textarea::placeholder { color: #6c7086; }
+
+.curl-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.curl-info {
+  font-size: 12px;
+  color: #16a34a;
+  background: #f0fdf4;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  border: 1px solid #bbf7d0;
+}
 
 /* ── URL 栏 ── */
 .url-bar {
