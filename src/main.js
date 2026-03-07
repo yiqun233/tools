@@ -8,6 +8,7 @@ import TextDiff from './views/TextDiff.vue'
 import BookmarkManager from './views/BookmarkManager.vue'
 import ImageOCR from './views/ImageOCR.vue'
 import Translator from './views/Translator.vue'
+import HttpClient from './views/HttpClient.vue'
 import NotFound from './views/NotFound.vue'
 import './styles/common.css'
 
@@ -19,6 +20,7 @@ const routes = [
   { path: '/bookmarks', component: BookmarkManager },
   { path: '/ocr', component: ImageOCR },
   { path: '/translator', component: Translator },
+  { path: '/http-client', component: HttpClient },
   { path: '/:pathMatch(.*)*', component: NotFound },
 ]
 

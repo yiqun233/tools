@@ -24,6 +24,12 @@
         <p>比较两段文本的差异，高亮显示不同之处</p>
       </router-link>
 
+      <router-link to="/http-client" class="tool-card">
+        <div class="tool-icon">🌐</div>
+        <h3>HTTP 请求</h3>
+        <p>在浏览器中发送 API 请求，支持多种方法与认证</p>
+      </router-link>
+
       <router-link to="/translator" class="tool-card">
         <div class="tool-icon">🌐</div>
         <h3>翻译工具</h3>

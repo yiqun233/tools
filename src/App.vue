@@ -12,6 +12,7 @@
           <router-link to="/json-formatter" @click="menuOpen = false">JSON格式化</router-link>
           <router-link to="/base64" @click="menuOpen = false">Base64</router-link>
           <router-link to="/text-diff" @click="menuOpen = false">文本对比</router-link>
+          <router-link to="/http-client" @click="menuOpen = false">HTTP请求</router-link>
           <router-link to="/translator" @click="menuOpen = false">翻译</router-link>
           <router-link to="/ocr" @click="menuOpen = false">图片识字</router-link>
           <router-link to="/bookmarks" @click="menuOpen = false">书签</router-link>
