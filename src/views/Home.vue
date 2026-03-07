@@ -18,22 +18,16 @@
         <p>文本和Base64之间的相互转换</p>
       </router-link>
 
-      <router-link to="/uuid" class="tool-card">
-        <div class="tool-icon">🆔</div>
-        <h3>UUID生成器</h3>
-        <p>快速生成UUID/GUID标识符</p>
-      </router-link>
-
       <router-link to="/text-diff" class="tool-card">
         <div class="tool-icon">📝</div>
         <h3>文本对比</h3>
         <p>比较两段文本的差异，高亮显示不同之处</p>
       </router-link>
 
-      <router-link to="/bookmarks" class="tool-card">
-        <div class="tool-icon">🔖</div>
-        <h3>书签管理</h3>
-        <p>管理和组织你的书签，支持文件夹分类</p>
+      <router-link to="/translator" class="tool-card">
+        <div class="tool-icon">🌐</div>
+        <h3>翻译工具</h3>
+        <p>中译英、英译中文互译</p>
       </router-link>
 
       <router-link to="/ocr" class="tool-card">
@@ -42,10 +36,10 @@
         <p>上传图片，自动提取图片中的文字内容</p>
       </router-link>
 
-      <router-link to="/translator" class="tool-card">
-        <div class="tool-icon">🌐</div>
-        <h3>翻译工具</h3>
-        <p>中译英、英译中文互译</p>
+      <router-link to="/bookmarks" class="tool-card">
+        <div class="tool-icon">🔖</div>
+        <h3>书签管理</h3>
+        <p>管理和组织你的书签，支持文件夹分类</p>
       </router-link>
     </div>
   </div>
@@ -89,14 +83,14 @@
   padding: 2rem;
   text-decoration: none;
   color: inherit;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   transition: all 0.3s;
   text-align: center;
 }
 
 .tool-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
 }
 
 .tool-icon {

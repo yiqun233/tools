@@ -1,5 +1,5 @@
 <template>
-  <div class="tool-container">
+  <div class="tool-container" style="max-width: 1600px">
     <div class="tool-header">
       <h2>书签管理器</h2>
       <p>管理和组织你的书签，支持文件夹分类和搜索</p>
@@ -17,18 +17,10 @@
           />
         </div>
         <div class="toolbar-actions">
-          <button @click="showAddBookmarkModal" class="btn btn-primary">
-            + 添加书签
-          </button>
-          <button @click="showAddFolderModal" class="btn btn-secondary">
-            + 新建文件夹
-          </button>
-          <button @click="exportBookmarks" class="btn btn-success">
-            导出书签
-          </button>
-          <button @click="importBookmarks" class="btn btn-info">
-            导入书签
-          </button>
+          <button @click="showAddBookmarkModal" class="btn btn-primary">+ 添加书签</button>
+          <button @click="showAddFolderModal" class="btn btn-secondary">+ 新建文件夹</button>
+          <button @click="exportBookmarks" class="btn btn-success">导出书签</button>
+          <button @click="importBookmarks" class="btn btn-info">导入书签</button>
         </div>
       </div>
 
@@ -36,9 +28,7 @@
       <div class="main-content">
         <!-- 文件夹树 -->
         <div class="sidebar">
-          <div class="sidebar-header">
-            <h3>文件夹</h3>
-          </div>
+          <div class="sidebar-header"><h3>文件夹</h3></div>
           <div class="folder-tree">
             <div
               :class="['folder-item', { active: currentFolder === null }]"
@@ -96,9 +86,7 @@
                   </a>
                 </h4>
                 <p class="bookmark-url">{{ bookmark.url }}</p>
-                <p v-if="bookmark.description" class="bookmark-description">
-                  {{ bookmark.description }}
-                </p>
+                <p v-if="bookmark.description" class="bookmark-description">{{ bookmark.description }}</p>
                 <div class="bookmark-meta">
                   <span class="bookmark-folder">📁 {{ getFolderName(bookmark.folderId) }}</span>
                   <span class="bookmark-date">{{ formatDate(bookmark.createdAt) }}</span>
@@ -138,9 +126,7 @@
             <label>文件夹</label>
             <select v-model="bookmarkForm.folderId">
               <option :value="null">未分类</option>
-              <option v-for="folder in folders" :key="folder.id" :value="folder.id">
-                {{ folder.name }}
-              </option>
+              <option v-for="folder in folders" :key="folder.id" :value="folder.id">{{ folder.name }}</option>
             </select>
           </div>
         </div>
@@ -171,47 +157,30 @@
       </div>
     </div>
 
-    <!-- 导入书签输入 -->
-    <input
-      ref="fileInput"
-      type="file"
-      accept=".json"
-      style="display: none"
-      @change="handleFileImport"
-    />
+    <input ref="fileInput" type="file" accept=".json" style="display: none" @change="handleFileImport" />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useToast } from '../composables/useToast'
 
-// 数据状态
+const { success, error: toastError, warning, info } = useToast()
+
 const bookmarks = ref([])
 const folders = ref([])
 const searchQuery = ref('')
 const currentFolder = ref(null)
 
-// 模态框状态
 const showBookmarkModal = ref(false)
 const showFolderModal = ref(false)
 const editingBookmark = ref(null)
 const editingFolder = ref(null)
 
-// 表单数据
-const bookmarkForm = ref({
-  title: '',
-  url: '',
-  description: '',
-  folderId: null
-})
-
-const folderForm = ref({
-  name: ''
-})
-
+const bookmarkForm = ref({ title: '', url: '', description: '', folderId: null })
+const folderForm = ref({ name: '' })
 const fileInput = ref(null)
 
-// 计算属性
 const totalBookmarks = computed(() => bookmarks.value.length)
 
 const currentFolderName = computed(() => {
@@ -222,13 +191,9 @@ const currentFolderName = computed(() => {
 
 const filteredBookmarks = computed(() => {
   let result = bookmarks.value
-
-  // 按文件夹筛选
   if (currentFolder.value !== null) {
     result = result.filter(b => b.folderId === currentFolder.value)
   }
-
-  // 按搜索关键词筛选
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     result = result.filter(b =>
@@ -237,25 +202,21 @@ const filteredBookmarks = computed(() => {
       (b.description && b.description.toLowerCase().includes(query))
     )
   }
-
   return result
 })
 
-// 方法
-const getBookmarkCountInFolder = (folderId) => {
-  return bookmarks.value.filter(b => b.folderId === folderId).length
-}
-
+const getBookmarkCountInFolder = (folderId) => bookmarks.value.filter(b => b.folderId === folderId).length
 const getFolderName = (folderId) => {
   if (!folderId) return '未分类'
   const folder = folders.value.find(f => f.id === folderId)
   return folder ? folder.name : '未分类'
 }
 
+// 使用 Google Favicon 服务，比直接访问 /favicon.ico 可靠
 const getFaviconUrl = (url) => {
   try {
-    const domain = new URL(url).origin
-    return `${domain}/favicon.ico`
+    const hostname = new URL(url).hostname
+    return `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`
   } catch {
     return 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">🔖</text></svg>'
   }
@@ -265,71 +226,39 @@ const handleFaviconError = (e) => {
   e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text y="20" font-size="20">🔖</text></svg>'
 }
 
-const formatDate = (timestamp) => {
-  const date = new Date(timestamp)
-  return date.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  })
-}
+const formatDate = (timestamp) => new Date(timestamp).toLocaleDateString('zh-CN', {
+  year: 'numeric', month: '2-digit', day: '2-digit'
+})
 
-const selectFolder = (folderId) => {
-  currentFolder.value = folderId
-}
+const selectFolder = (folderId) => { currentFolder.value = folderId }
 
-// 书签操作
 const showAddBookmarkModal = () => {
   editingBookmark.value = null
-  bookmarkForm.value = {
-    title: '',
-    url: '',
-    description: '',
-    folderId: currentFolder.value
-  }
+  bookmarkForm.value = { title: '', url: '', description: '', folderId: currentFolder.value }
   showBookmarkModal.value = true
 }
 
 const editBookmark = (bookmark) => {
   editingBookmark.value = bookmark
-  bookmarkForm.value = {
-    title: bookmark.title,
-    url: bookmark.url,
-    description: bookmark.description || '',
-    folderId: bookmark.folderId
-  }
+  bookmarkForm.value = { title: bookmark.title, url: bookmark.url, description: bookmark.description || '', folderId: bookmark.folderId }
   showBookmarkModal.value = true
 }
 
-const closeBookmarkModal = () => {
-  showBookmarkModal.value = false
-  editingBookmark.value = null
-}
+const closeBookmarkModal = () => { showBookmarkModal.value = false; editingBookmark.value = null }
 
 const saveBookmark = () => {
   if (!bookmarkForm.value.title || !bookmarkForm.value.url) {
-    alert('请填写标题和网址')
+    warning('请填写标题和网址')
     return
   }
-
   if (editingBookmark.value) {
-    // 编辑现有书签
     const index = bookmarks.value.findIndex(b => b.id === editingBookmark.value.id)
-    if (index !== -1) {
-      bookmarks.value[index] = {
-        ...bookmarks.value[index],
-        ...bookmarkForm.value
-      }
-    }
+    if (index !== -1) bookmarks.value[index] = { ...bookmarks.value[index], ...bookmarkForm.value }
+    success('书签已更新')
   } else {
-    // 添加新书签
-    bookmarks.value.push({
-      id: Date.now(),
-      ...bookmarkForm.value,
-      createdAt: Date.now()
-    })
+    bookmarks.value.push({ id: Date.now(), ...bookmarkForm.value, createdAt: Date.now() })
+    success('书签已添加')
   }
-
   saveToLocalStorage()
   closeBookmarkModal()
 }
@@ -338,10 +267,10 @@ const deleteBookmark = (id) => {
   if (confirm('确定要删除这个书签吗？')) {
     bookmarks.value = bookmarks.value.filter(b => b.id !== id)
     saveToLocalStorage()
+    info('书签已删除')
   }
 }
 
-// 文件夹操作
 const showAddFolderModal = () => {
   editingFolder.value = null
   folderForm.value = { name: '' }
@@ -354,72 +283,41 @@ const editFolder = (folder) => {
   showFolderModal.value = true
 }
 
-const closeFolderModal = () => {
-  showFolderModal.value = false
-  editingFolder.value = null
-}
+const closeFolderModal = () => { showFolderModal.value = false; editingFolder.value = null }
 
 const saveFolder = () => {
-  if (!folderForm.value.name) {
-    alert('请填写文件夹名称')
-    return
-  }
-
+  if (!folderForm.value.name) { warning('请填写文件夹名称'); return }
   if (editingFolder.value) {
-    // 编辑现有文件夹
     const index = folders.value.findIndex(f => f.id === editingFolder.value.id)
-    if (index !== -1) {
-      folders.value[index] = {
-        ...folders.value[index],
-        ...folderForm.value
-      }
-    }
+    if (index !== -1) folders.value[index] = { ...folders.value[index], ...folderForm.value }
+    success('文件夹已更新')
   } else {
-    // 添加新文件夹
-    folders.value.push({
-      id: Date.now(),
-      ...folderForm.value,
-      createdAt: Date.now()
-    })
+    folders.value.push({ id: Date.now(), ...folderForm.value, createdAt: Date.now() })
+    success('文件夹已创建')
   }
-
   saveToLocalStorage()
   closeFolderModal()
 }
 
 const deleteFolder = (id) => {
   const bookmarkCount = getBookmarkCountInFolder(id)
-  if (bookmarkCount > 0) {
-    if (!confirm(`此文件夹中有 ${bookmarkCount} 个书签，删除后这些书签将移至"未分类"，确定要删除吗？`)) {
-      return
-    }
-    // 将文件夹中的书签移至未分类
-    bookmarks.value.forEach(b => {
-      if (b.folderId === id) {
-        b.folderId = null
-      }
-    })
-  } else {
-    if (!confirm('确定要删除这个文件夹吗？')) {
-      return
-    }
-  }
+  const msg = bookmarkCount > 0
+    ? `此文件夹中有 ${bookmarkCount} 个书签，删除后这些书签将移至"未分类"，确定要删除吗？`
+    : '确定要删除这个文件夹吗？'
 
-  folders.value = folders.value.filter(f => f.id !== id)
-  if (currentFolder.value === id) {
-    currentFolder.value = null
+  if (!confirm(msg)) return
+
+  if (bookmarkCount > 0) {
+    bookmarks.value.forEach(b => { if (b.folderId === id) b.folderId = null })
   }
+  folders.value = folders.value.filter(f => f.id !== id)
+  if (currentFolder.value === id) currentFolder.value = null
   saveToLocalStorage()
+  info('文件夹已删除')
 }
 
-// 导入导出
 const exportBookmarks = () => {
-  const data = {
-    bookmarks: bookmarks.value,
-    folders: folders.value,
-    exportDate: new Date().toISOString()
-  }
-
+  const data = { bookmarks: bookmarks.value, folders: folders.value, exportDate: new Date().toISOString() }
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -427,11 +325,10 @@ const exportBookmarks = () => {
   a.download = `bookmarks-${Date.now()}.json`
   a.click()
   URL.revokeObjectURL(url)
+  success(`已导出 ${bookmarks.value.length} 个书签`)
 }
 
-const importBookmarks = () => {
-  fileInput.value.click()
-}
+const importBookmarks = () => { fileInput.value.click() }
 
 const handleFileImport = (event) => {
   const file = event.target.files[0]
@@ -441,23 +338,25 @@ const handleFileImport = (event) => {
   reader.onload = (e) => {
     try {
       const data = JSON.parse(e.target.result)
-      if (data.bookmarks && data.folders) {
-        bookmarks.value = data.bookmarks
-        folders.value = data.folders
-        saveToLocalStorage()
-        alert('导入成功！')
-      } else {
-        alert('无效的书签文件格式')
+      if (!data.bookmarks || !data.folders) { toastError('无效的书签文件格式'); return }
+
+      // 如果已有数据，询问是否覆盖
+      if (bookmarks.value.length > 0) {
+        if (!confirm(`将导入 ${data.bookmarks.length} 个书签。\n\n点击"确定"覆盖现有数据，点击"取消"放弃导入。`)) return
       }
-    } catch (error) {
-      alert('导入失败：' + error.message)
+
+      bookmarks.value = data.bookmarks
+      folders.value = data.folders
+      saveToLocalStorage()
+      success(`导入成功！共 ${data.bookmarks.length} 个书签`)
+    } catch (err) {
+      toastError('导入失败：' + err.message)
     }
   }
   reader.readAsText(file)
   event.target.value = ''
 }
 
-// 本地存储
 const saveToLocalStorage = () => {
   localStorage.setItem('bookmarks', JSON.stringify(bookmarks.value))
   localStorage.setItem('folders', JSON.stringify(folders.value))
@@ -466,91 +365,29 @@ const saveToLocalStorage = () => {
 const loadFromLocalStorage = () => {
   const savedBookmarks = localStorage.getItem('bookmarks')
   const savedFolders = localStorage.getItem('folders')
+  if (savedBookmarks) bookmarks.value = JSON.parse(savedBookmarks)
+  if (savedFolders) folders.value = JSON.parse(savedFolders)
 
-  if (savedBookmarks) {
-    bookmarks.value = JSON.parse(savedBookmarks)
-  }
-
-  if (savedFolders) {
-    folders.value = JSON.parse(savedFolders)
-  }
-
-  // 如果没有数据，添加一些示例数据
   if (bookmarks.value.length === 0) {
     folders.value = [
       { id: 1, name: '开发工具', createdAt: Date.now() },
       { id: 2, name: '学习资源', createdAt: Date.now() }
     ]
-
     bookmarks.value = [
-      {
-        id: 1,
-        title: 'GitHub',
-        url: 'https://github.com',
-        description: '全球最大的代码托管平台',
-        folderId: 1,
-        createdAt: Date.now()
-      },
-      {
-        id: 2,
-        title: 'MDN Web Docs',
-        url: 'https://developer.mozilla.org',
-        description: 'Web 开发文档',
-        folderId: 2,
-        createdAt: Date.now()
-      },
-      {
-        id: 3,
-        title: 'Vue.js',
-        url: 'https://vuejs.org',
-        description: '渐进式 JavaScript 框架',
-        folderId: 1,
-        createdAt: Date.now()
-      }
+      { id: 1, title: 'GitHub', url: 'https://github.com', description: '全球最大的代码托管平台', folderId: 1, createdAt: Date.now() },
+      { id: 2, title: 'MDN Web Docs', url: 'https://developer.mozilla.org', description: 'Web 开发文档', folderId: 2, createdAt: Date.now() },
+      { id: 3, title: 'Vue.js', url: 'https://vuejs.org', description: '渐进式 JavaScript 框架', folderId: 1, createdAt: Date.now() }
     ]
-
     saveToLocalStorage()
   }
 }
 
-// 初始化
-onMounted(() => {
-  loadFromLocalStorage()
-})
+onMounted(() => { loadFromLocalStorage() })
 </script>
 
 <style scoped>
-.tool-container {
-  max-width: 1600px;
-  margin: 0 auto;
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-}
+.tool-content { display: flex; flex-direction: column; gap: 1.5rem; }
 
-.tool-header {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.tool-header h2 {
-  font-size: 2rem;
-  color: #667eea;
-  margin-bottom: 0.5rem;
-}
-
-.tool-header p {
-  color: #666;
-}
-
-.tool-content {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-/* 工具栏 */
 .toolbar {
   display: flex;
   justify-content: space-between;
@@ -562,11 +399,7 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
-.search-box {
-  flex: 1;
-  min-width: 200px;
-}
-
+.search-box { flex: 1; min-width: 200px; }
 .search-input {
   width: 100%;
   padding: 0.75rem 1rem;
@@ -575,19 +408,10 @@ onMounted(() => {
   font-size: 14px;
   transition: border-color 0.3s;
 }
+.search-input:focus { outline: none; border-color: #667eea; }
 
-.search-input:focus {
-  outline: none;
-  border-color: #667eea;
-}
+.toolbar-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
-.toolbar-actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-/* 主内容区 */
 .main-content {
   display: grid;
   grid-template-columns: 250px 1fr;
@@ -595,26 +419,11 @@ onMounted(() => {
   min-height: 500px;
 }
 
-/* 侧边栏 */
-.sidebar {
-  border-right: 2px solid #e0e0e0;
-  padding-right: 1.5rem;
-}
+.sidebar { border-right: 2px solid #e0e0e0; padding-right: 1.5rem; }
+.sidebar-header { margin-bottom: 1rem; }
+.sidebar-header h3 { font-size: 1.2rem; color: #333; }
 
-.sidebar-header {
-  margin-bottom: 1rem;
-}
-
-.sidebar-header h3 {
-  font-size: 1.2rem;
-  color: #333;
-}
-
-.folder-tree {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
+.folder-tree { display: flex; flex-direction: column; gap: 0.5rem; }
 
 .folder-item {
   display: flex;
@@ -626,45 +435,17 @@ onMounted(() => {
   transition: all 0.3s;
   position: relative;
 }
+.folder-item:hover { background: #f0f4ff; }
+.folder-item.active { background: #667eea; color: white; }
 
-.folder-item:hover {
-  background: #f0f4ff;
-}
+.folder-icon { font-size: 1.2rem; }
+.folder-name { flex: 1; font-weight: 500; }
+.folder-count { font-size: 0.85rem; opacity: 0.7; }
 
-.folder-item.active {
-  background: #667eea;
-  color: white;
-}
+.folder-actions { display: none; gap: 0.25rem; }
+.folder-item:hover .folder-actions { display: flex; }
 
-.folder-icon {
-  font-size: 1.2rem;
-}
-
-.folder-name {
-  flex: 1;
-  font-weight: 500;
-}
-
-.folder-count {
-  font-size: 0.85rem;
-  opacity: 0.7;
-}
-
-.folder-actions {
-  display: none;
-  gap: 0.25rem;
-}
-
-.folder-item:hover .folder-actions {
-  display: flex;
-}
-
-/* 书签列表 */
-.bookmark-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
+.bookmark-list { display: flex; flex-direction: column; gap: 1rem; }
 
 .list-header {
   display: flex;
@@ -672,28 +453,12 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 1rem;
 }
+.list-header h3 { font-size: 1.5rem; color: #333; }
+.bookmark-count { color: #666; font-size: 0.9rem; }
 
-.list-header h3 {
-  font-size: 1.5rem;
-  color: #333;
-}
+.empty-state { text-align: center; padding: 4rem 2rem; color: #999; }
 
-.bookmark-count {
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 4rem 2rem;
-  color: #999;
-}
-
-.bookmarks {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
+.bookmarks { display: flex; flex-direction: column; gap: 1rem; }
 
 .bookmark-card {
   display: flex;
@@ -703,136 +468,24 @@ onMounted(() => {
   border-radius: 8px;
   transition: all 0.3s;
 }
+.bookmark-card:hover { border-color: #667eea; box-shadow: 0 4px 8px rgba(102, 126, 234, 0.1); }
 
-.bookmark-card:hover {
-  border-color: #667eea;
-  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.1);
-}
+.bookmark-favicon { flex-shrink: 0; }
+.bookmark-favicon img { width: 32px; height: 32px; border-radius: 4px; }
 
-.bookmark-favicon {
-  flex-shrink: 0;
-}
-
-.bookmark-favicon img {
-  width: 32px;
-  height: 32px;
-  border-radius: 4px;
-}
-
-.bookmark-content {
-  flex: 1;
-}
-
-.bookmark-title {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.1rem;
-}
-
-.bookmark-title a {
-  color: #333;
-  text-decoration: none;
-  transition: color 0.3s;
-}
-
-.bookmark-title a:hover {
-  color: #667eea;
-}
-
-.bookmark-url {
-  margin: 0 0 0.5rem 0;
-  color: #666;
-  font-size: 0.9rem;
-  word-break: break-all;
-}
-
-.bookmark-description {
-  margin: 0 0 0.5rem 0;
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.bookmark-meta {
-  display: flex;
-  gap: 1rem;
-  font-size: 0.85rem;
-  color: #999;
-}
-
-.bookmark-actions {
-  display: flex;
-  gap: 0.5rem;
-  align-items: flex-start;
-}
-
-/* 按钮 */
-.btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.3s;
-  white-space: nowrap;
-}
-
-.btn-primary {
-  background: #667eea;
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #5568d3;
-}
-
-.btn-secondary {
-  background: #48bb78;
-  color: white;
-}
-
-.btn-secondary:hover {
-  background: #38a169;
-}
-
-.btn-success {
-  background: #4299e1;
-  color: white;
-}
-
-.btn-success:hover {
-  background: #3182ce;
-}
-
-.btn-info {
-  background: #ed8936;
-  color: white;
-}
-
-.btn-info:hover {
-  background: #dd6b20;
-}
-
-.btn-icon {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1.2rem;
-  padding: 0.25rem;
-  opacity: 0.6;
-  transition: opacity 0.3s;
-}
-
-.btn-icon:hover {
-  opacity: 1;
-}
+.bookmark-content { flex: 1; }
+.bookmark-title { margin: 0 0 0.5rem 0; font-size: 1.1rem; }
+.bookmark-title a { color: #333; text-decoration: none; transition: color 0.3s; }
+.bookmark-title a:hover { color: #667eea; }
+.bookmark-url { margin: 0 0 0.5rem 0; color: #666; font-size: 0.9rem; word-break: break-all; }
+.bookmark-description { margin: 0 0 0.5rem 0; color: #666; font-size: 0.9rem; }
+.bookmark-meta { display: flex; gap: 1rem; font-size: 0.85rem; color: #999; }
+.bookmark-actions { display: flex; gap: 0.5rem; align-items: flex-start; }
 
 /* 模态框 */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
@@ -857,12 +510,7 @@ onMounted(() => {
   padding: 1.5rem;
   border-bottom: 1px solid #e0e0e0;
 }
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #333;
-}
+.modal-header h3 { margin: 0; font-size: 1.5rem; color: #333; }
 
 .btn-close {
   background: none;
@@ -875,26 +523,12 @@ onMounted(() => {
   width: 32px;
   height: 32px;
 }
+.btn-close:hover { color: #333; }
 
-.btn-close:hover {
-  color: #333;
-}
+.modal-body { padding: 1.5rem; }
 
-.modal-body {
-  padding: 1.5rem;
-}
-
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: #333;
-}
-
+.form-group { margin-bottom: 1.5rem; }
+.form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: #333; }
 .form-group input,
 .form-group textarea,
 .form-group select {
@@ -906,18 +540,10 @@ onMounted(() => {
   font-family: inherit;
   transition: border-color 0.3s;
 }
-
 .form-group input:focus,
 .form-group textarea:focus,
-.form-group select:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
-.form-group textarea {
-  resize: vertical;
-  min-height: 80px;
-}
+.form-group select:focus { outline: none; border-color: #667eea; }
+.form-group textarea { resize: vertical; min-height: 80px; }
 
 .modal-footer {
   display: flex;
@@ -927,30 +553,10 @@ onMounted(() => {
   border-top: 1px solid #e0e0e0;
 }
 
-/* 响应式 */
 @media (max-width: 768px) {
-  .main-content {
-    grid-template-columns: 1fr;
-  }
-
-  .sidebar {
-    border-right: none;
-    border-bottom: 2px solid #e0e0e0;
-    padding-right: 0;
-    padding-bottom: 1.5rem;
-  }
-
-  .toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .toolbar-actions {
-    flex-direction: column;
-  }
-
-  .btn {
-    width: 100%;
-  }
+  .main-content { grid-template-columns: 1fr; }
+  .sidebar { border-right: none; border-bottom: 2px solid #e0e0e0; padding-right: 0; padding-bottom: 1.5rem; }
+  .toolbar { flex-direction: column; align-items: stretch; }
+  .toolbar-actions { flex-direction: column; }
 }
 </style>

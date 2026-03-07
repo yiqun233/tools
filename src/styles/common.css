@@ -1,0 +1,131 @@
+/* =============================================
+   公共样式 - 按钮
+   ============================================= */
+.btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.btn-small {
+  padding: 0.4rem 0.8rem;
+  font-size: 13px;
+}
+
+.btn-large {
+  padding: 0.75rem 2rem;
+  font-size: 16px;
+}
+
+.btn-primary   { background: #667eea; color: white; }
+.btn-primary:hover   { background: #5568d3; }
+
+.btn-secondary { background: #48bb78; color: white; }
+.btn-secondary:hover { background: #38a169; }
+
+.btn-success   { background: #4299e1; color: white; }
+.btn-success:hover   { background: #3182ce; }
+
+.btn-danger    { background: #f56565; color: white; }
+.btn-danger:hover    { background: #e53e3e; }
+
+.btn-info      { background: #ed8936; color: white; }
+.btn-info:hover      { background: #dd6b20; }
+
+.btn-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0.25rem;
+  opacity: 0.6;
+  transition: opacity 0.3s;
+}
+
+.btn-icon:hover { opacity: 1; }
+
+/* =============================================
+   公共样式 - 工具容器
+   ============================================= */
+.tool-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.tool-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.tool-header h2 {
+  font-size: 2rem;
+  color: #667eea;
+  margin-bottom: 0.5rem;
+}
+
+.tool-header p {
+  color: #666;
+}
+
+/* =============================================
+   公共样式 - 文本域
+   ============================================= */
+.textarea {
+  width: 100%;
+  min-height: 400px;
+  padding: 1rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 14px;
+  resize: vertical;
+  transition: border-color 0.3s;
+  box-sizing: border-box;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+/* =============================================
+   公共样式 - 区块头部 & 按钮组
+   ============================================= */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.section-header h3 {
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.button-group {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* =============================================
+   公共样式 - 错误提示
+   ============================================= */
+.error-message {
+  background: #fff5f5;
+  border: 1px solid #fc8181;
+  color: #c53030;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-top: 1rem;
+}
